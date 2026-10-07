@@ -1,4 +1,5 @@
 import numpy as np
+import random
 #import scipy
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -58,6 +59,9 @@ class Pandemic :
         new_board[0][1] = 1
         new_board[1][0] = 128
         new_board[1][1] = 256
+        for i in range(0,self.board.num_cols) :
+            for j in range(0,self.board.num_cols) :
+                new_board[i][j] = random.randrange(0,256)
         self.board.update_board(new_board)
         self.board.print_board()
         self.gui.update_display(new_board)
