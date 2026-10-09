@@ -15,7 +15,7 @@ mpl.colormaps.register(zombie_map)
 
 # Infection parameters:
 TICK_RATE = 0.1
-INFECTION_CHANCE = 0.3
+INFECTION_CHANCE = 0.05
 INCUBATION_RATE = 1
 
 # Cell states:
@@ -63,9 +63,9 @@ class Gui :
 class Pandemic :
     def __init__(self) :
         print("hello world")
-        self.num_rows = 20
-        self.num_cols = 20
-        self.population_percent = 10
+        self.num_rows = 32
+        self.num_cols = 32
+        self.population_percent = 30
 
         self.board = Board(self.num_rows, self.num_cols)
         self.gui = Gui()

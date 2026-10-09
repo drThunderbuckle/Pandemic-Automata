@@ -8,20 +8,45 @@ from matplotlib.colors import LinearSegmentedColormap
 
 
 MAX_STATE = 32
+POPULATION = 30 #population in percent from 0-100
 SHOWING_SYMPTOMS = (1.0-1e-8, "#C6FC60")
 COLOR_GRADIENT = [(0.0, "black"), (1e-8, "#FFD9C2"), SHOWING_SYMPTOMS, (1.0, "#819073")]
 zombie_map = LinearSegmentedColormap.from_list("zombies", COLOR_GRADIENT, N=MAX_STATE)
 mpl.colormaps.register(zombie_map)
 
 # Infection parameters:
-TICK_RATE = 0.1
-INFECTION_CHANCE = 0.3
-INCUBATION_RATE = 1
+TICK_RATE = 0.1 # Simulation speed
+ZOMBIE_INFECTION_CHANCE = 0.1 # Chance of infection per zombie neighbor per tick
+INFECTED_INFECTION_CHANCE = ZOMBIE_INFECTION_CHANCE / 4 # Chance of infection per infected neighbor per tick, 
+                                                        # (1/4 of the chance of a zombie neighbor).
+INCUBATION_RATE = 1 # Rate at which infected people progress towards becoming zombies per tick, 
+                    # multiplied by the number of infected neighbors.
+QUARANTINE_THRESHOLD = 0.3 # Infected Level at which cured cells begin treating infected as a zombie and infected isolate themselves
 
 # Cell states:
-EMPTY = 0
-CLEAN = 1
-ZOMBIE = MAX_STATE
+EMPTY = 0 # Board cell.
+CLEAN = 1 # Healthy person.
+QUARANTINE = int(MAX_STATE * QUARANTINE_THRESHOLD)
+ZOMBIE = MAX_STATE # Completely infected person, who cannot be cured.
+
+
+'''
+Features to possibly add
+
+zombies chase clean/infected
+
+clean/infected run away from zombies
+
+    create a movement direction opposite of the average relative position of neighboring zombies
+
+clean/infected run away from eachother if difference in infection level is high enough
+
+isolated infected can have infection go down and become cured.
+
+isolated will distance themselves from all other cells to avoid spreading infection
+
+
+'''
 
 
 class Board :
@@ -63,9 +88,9 @@ class Gui :
 class Pandemic :
     def __init__(self) :
         print("hello world")
-        self.num_rows = 20
-        self.num_cols = 20
-        self.population_percent = 10
+        self.num_rows = 16
+        self.num_cols = 16
+        self.population_percent = POPULATION
 
         self.board = Board(self.num_rows, self.num_cols)
         self.gui = Gui()
@@ -98,32 +123,127 @@ class Pandemic :
         for i in range(self.num_rows):
             for j in range(self.num_cols):
                 if board[i][j] != EMPTY:
-                    dir1 = random.choice([0, 1])
-                    dir2 = 1 - dir1
-                    step_y = dir1 * random.choice([1, -1])
-                    step_x = dir2 * random.choice([1, -1])
-                    y_next = (i + step_y) % self.num_rows
-                    x_next = (j + step_x) % self.num_cols
-                    # Take random step
-                    # If step is blocked it will stay still.
-                    if board[y_next, x_next] == EMPTY and new_board[y_next, x_next] == EMPTY:
-                        new_board[y_next, x_next] = board[i, j]
-                        new_board[i, j] = EMPTY
+
+                    #Cured Movement
+                    if board[i][j] == CLEAN :
+
+                        direction,_ = self.get_neighbors(board, i, j, radius = 5, target = QUARANTINE)
+
+                        step_y = -direction[0]
+                        step_x = -direction[1]
+
+                        #Take Random Step
+                        if direction == [0,0] :
+                            dir1 = random.choice([0, 1])
+                            dir2 = 1 - dir1
+                            step_y = dir1 * random.choice([1, -1])
+                            step_x = dir2 * random.choice([1, -1])
+                        
+                        y_next = int((i + step_y) % self.num_rows)
+                        x_next = int((j + step_x) % self.num_cols)
+
+                        # If step is blocked it will try another random step and then stay still.
+                        if board[y_next, x_next] == EMPTY and new_board[y_next, x_next] == EMPTY:
+                            new_board[y_next, x_next] = board[i, j]
+                            new_board[i, j] = EMPTY
+
+                    #Infected Movement
+                    elif CLEAN < board[i][j] < QUARANTINE:
+
+                        direction,_ = self.get_neighbors(board, i, j, radius = 5, target = QUARANTINE)
+                        step_y = -direction[0]
+                        step_x = -direction[1]
+
+                        #Take Random Step
+                        if direction == [0,0] :
+                            dir1 = random.choice([0, 1])
+                            dir2 = 1 - dir1
+                            step_y = dir1 * random.choice([1, -1])
+                            step_x = dir2 * random.choice([1, -1])
+                        
+                        y_next = int((i + step_y) % self.num_rows)
+                        x_next = int((j + step_x) % self.num_cols)
+
+                        # If step is blocked it will try another random step and then stay still.
+                        if board[y_next, x_next] == EMPTY and new_board[y_next, x_next] == EMPTY:
+                            new_board[y_next, x_next] = board[i, j]
+                            new_board[i, j] = EMPTY
+
+                    #Quarantined Movement
+                    elif QUARANTINE <= board[i][j] < ZOMBIE :
+
+                        direction,_ = self.get_neighbors(board, i, j, radius = 5, target = 1)
+
+                        step_y = -direction[0]
+                        step_x = -direction[1]
+
+                        #Take Random Step
+                        if direction == [0,0] :
+                            dir1 = random.choice([0, 1])
+                            dir2 = 1 - dir1
+                            step_y = dir1 * random.choice([1, -1])
+                            step_x = dir2 * random.choice([1, -1])
+                        
+                        y_next = int((i + step_y) % self.num_rows)
+                        x_next = int((j + step_x) % self.num_cols)
+
+                        # If step is blocked it will try another random step and then stay still.
+                        if board[y_next, x_next] == EMPTY and new_board[y_next, x_next] == EMPTY:
+                            new_board[y_next, x_next] = board[i, j]
+                            new_board[i, j] = EMPTY
+
+                    #Zombie Movement
+                    elif board[i][j] == ZOMBIE :
+                        dir1 = random.choice([0, 1])
+                        dir2 = 1 - dir1
+                        step_y = dir1 * random.choice([1, -1])
+                        step_x = dir2 * random.choice([1, -1])
+                        y_next = (i + step_y) % self.num_rows
+                        x_next = (j + step_x) % self.num_cols
+                        # Take random step
+                        # If step is blocked it will stay still.
+                        if board[y_next, x_next] == EMPTY and new_board[y_next, x_next] == EMPTY:
+                            new_board[y_next, x_next] = board[i, j]
+                            new_board[i, j] = EMPTY
+        
         return new_board
 
 
-    def get_neighbors(self, board, i, j):
+    def get_neighbors(self, board, i, j, radius = 1, target = ZOMBIE):
         """Returns a cell's neighbors."""
-        return [
-            board[(i - 1) % self.num_rows, j],
-            board[(i + 1) % self.num_rows, j],
-            board[i, (j - 1) % self.num_cols],
-            board[i, (j + 1) % self.num_cols],
-        ]
+
+        neighbors = []
+        i1 = i
+        j1 = j
+
+        target_x = 0
+        target_y = 0
+
+        #Direction in [x,y]
+        direction = [0,0]
+
+        for i in range(-radius, radius+1) :
+            for j in range(-radius, radius+1) :
+                if (i != 0) or (j != 0) :
+                    check_i = (i1 + i) % self.num_rows
+                    check_j = (j1 + j) % self.num_cols
+                    neighbors.append(board[check_i, check_j])
+
+                    if board[check_i, check_j] >= target :
+                        target_x += i
+                        target_y += j
+
+        if (target_x != 0) and (target_y != 0) :
+            if abs(target_x) > abs(target_y) :
+                direction = [target_x/abs(target_x), 0]
+            else :
+                direction = [0, target_y/abs(target_y)]
+                        
+        return direction, neighbors
 
 
     def spread_infection(self, board):
-        """Clean people next to zombies may become infected.
+        """Clean people next to zombies or infected people may become infected.
 
         Incubating people tick one step closer to being zombies, and they
         progress faster the more infected neighbors they have.
@@ -135,18 +255,29 @@ class Pandemic :
                 # compound in a single tick.
                 state = board[i, j]
                 if state == CLEAN:
-                    neighbors = self.get_neighbors(board, i, j)
+                    _, neighbors = self.get_neighbors(board, i, j)
                     zombie_neighbors = neighbors.count(ZOMBIE)
+                    clean_neighbors = neighbors.count(CLEAN)
+                    board_spots = neighbors.count(EMPTY)
+                    infected_neighbors = len(neighbors) - zombie_neighbors - clean_neighbors - board_spots
                     if zombie_neighbors > 0:
                         # The chance of infection increases based off a
                         # persons number of zombie neighbors.
-                        p = 1 - (1 - INFECTION_CHANCE) ** zombie_neighbors
-                        if random.random() < p:
+                        p_z = 1 - (1 - ZOMBIE_INFECTION_CHANCE) ** zombie_neighbors
+                        if random.random() < p_z:
                             new_board[i, j] = 2
-                elif 2 <= state < ZOMBIE:
-                    neighbors = self.get_neighbors(board, i, j)
+                    if infected_neighbors > 0:
+                        # The chance of infection increases based off a
+                        # persons number of infected neighbors.
+                        p_i = 1 - (1 - INFECTED_INFECTION_CHANCE) ** infected_neighbors
+                        if random.random() < p_i:
+                            new_board[i, j] = 2
+                elif CLEAN < state < ZOMBIE:
+                    _, neighbors = self.get_neighbors(board, i, j)
                     infected_neighbors = sum(n >= 2 for n in neighbors)
                     increase = 1 + INCUBATION_RATE * infected_neighbors
+                    if (len(neighbors) - neighbors.count(EMPTY)) == 0 :
+                        increase = -1
                     new_board[i, j] = min(ZOMBIE, state + increase)
         return new_board
 
@@ -158,7 +289,6 @@ class Pandemic :
         num_infected = np.count_nonzero(board) - num_clean - num_zombie
         return num_clean, num_infected, num_zombie
 
-
     def start(self) :
         print("game started")
         board = self.create_first_board()
@@ -169,6 +299,8 @@ class Pandemic :
 
         #start game loop
         start_time = time.time()
+        buffer_max = 20 # buffer to allow a set number of frames after board is fully clean or zombified
+        buffer = 0
         while self.gui.open:
             board = self.move_people(board)
             board = self.spread_infection(board)
@@ -181,8 +313,19 @@ class Pandemic :
             total = clean + infected + zombie
             print(f"Clean: {clean},  Infected: {infected}, Zombie: {zombie}, Total: {total}")
 
+            if zombie == total or clean == total :
+
+                if buffer < buffer_max :
+                    buffer += 1
+                else :
+                    board = self.create_first_board()
+                    buffer = 0
+
             #reset time
-            plt.pause(TICK_RATE - (time.time() - start_time))
+            if (TICK_RATE - (time.time() - start_time)) > 0 :
+                plt.pause(TICK_RATE - (time.time() - start_time))
+            else :
+                plt.pause(0.01)
             start_time = time.time()
 
         plt.ioff()
@@ -192,4 +335,3 @@ class Pandemic :
 if __name__ == "__main__" :
     game = Pandemic()
     game.start()
-
