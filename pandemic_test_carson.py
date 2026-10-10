@@ -6,29 +6,27 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 
-
 MAX_STATE = 32
-POPULATION = 30 #population in percent from 0-100
-SHOWING_SYMPTOMS = (1.0-1e-8, "#C6FC60")
+POPULATION = 50  # population in percent from 0-100
+SHOWING_SYMPTOMS = (1.0 - 1e-8, "#C6FC60")
 COLOR_GRADIENT = [(0.0, "black"), (1e-8, "#FFD9C2"), SHOWING_SYMPTOMS, (1.0, "#819073")]
 zombie_map = LinearSegmentedColormap.from_list("zombies", COLOR_GRADIENT, N=MAX_STATE)
 mpl.colormaps.register(zombie_map)
 
 # Infection parameters:
-TICK_RATE = 0.1 # Simulation speed
-ZOMBIE_INFECTION_CHANCE = 0.1 # Chance of infection per zombie neighbor per tick
-INFECTED_INFECTION_CHANCE = ZOMBIE_INFECTION_CHANCE / 4 # Chance of infection per infected neighbor per tick, 
-                                                        # (1/4 of the chance of a zombie neighbor).
-INCUBATION_RATE = 1 # Rate at which infected people progress towards becoming zombies per tick, 
-                    # multiplied by the number of infected neighbors.
-QUARANTINE_THRESHOLD = 0.3 # Infected Level at which cured cells begin treating infected as a zombie and infected isolate themselves
+TICK_RATE = 0.1  # Simulation speed
+ZOMBIE_INFECTION_CHANCE = 0.3  # Chance of infection per zombie neighbor per tick
+INFECTED_INFECTION_CHANCE = ZOMBIE_INFECTION_CHANCE / 4  # Chance of infection per infected neighbor per tick,
+# (1/4 of the chance of a zombie neighbor).
+INCUBATION_RATE = 1  # Rate at which infected people progress towards becoming zombies per tick,
+# multiplied by the number of infected neighbors.
+QUARANTINE_THRESHOLD = 0.8  # Infected Level at which cured cells begin treating infected as a zombie and infected isolate themselves
 
 # Cell states:
-EMPTY = 0 # Board cell.
-CLEAN = 1 # Healthy person.
+EMPTY = 0  # Board cell.
+CLEAN = 1  # Healthy person.
 QUARANTINE = int(MAX_STATE * QUARANTINE_THRESHOLD)
-ZOMBIE = MAX_STATE # Completely infected person, who cannot be cured.
-
+ZOMBIE = MAX_STATE  # Completely infected person, who cannot be cured.
 
 '''
 Features to possibly add
@@ -45,36 +43,35 @@ isolated infected can have infection go down and become cured.
 
 isolated will distance themselves from all other cells to avoid spreading infection
 
-
 '''
 
 
-class Board :
-    def __init__(self, num_rows, num_cols) :
+class Board:
+    def __init__(self, num_rows, num_cols):
         print("board created")
         self.num_rows = num_rows
         self.num_cols = num_cols
         self.board = np.zeros((self.num_rows, self.num_cols), dtype=int)
 
-    def update_board(self, board) :
+    def update_board(self, board):
         self.board = board
 
-    def print_board(self) :
+    def print_board(self):
         print(self.board)
 
-    def get_board(self) :
+    def get_board(self):
         return self.board
 
 
-class Gui :
-    def __init__(self) :
+class Gui:
+    def __init__(self):
         print("gui started")
         plt.ion()
         self.open = True
         self.fig, self.ax = plt.subplots()
         self.fig.canvas.mpl_connect('close_event', self.on_close)
 
-    def update_display(self, board, tick_rate) :
+    def update_display(self, board, tick_rate):
         self.ax.clear()
         plt.axis('off')
         self.ax.imshow(board, cmap="zombies", vmin=0, vmax=MAX_STATE)
@@ -85,16 +82,15 @@ class Gui :
         self.open = False
 
 
-class Pandemic :
-    def __init__(self) :
+class Pandemic:
+    def __init__(self):
         print("hello world")
-        self.num_rows = 16
-        self.num_cols = 16
+        self.num_rows = 256
+        self.num_cols = 256
         self.population_percent = POPULATION
 
         self.board = Board(self.num_rows, self.num_cols)
         self.gui = Gui()
-
 
     def create_first_board(self, patients=1):
         """Randomly places people, then infects 'patients' of them.
@@ -104,7 +100,7 @@ class Pandemic :
         board = np.zeros((self.num_rows, self.num_cols), dtype=int)
         for i in range(self.board.num_rows):
             for j in range(self.board.num_cols):
-                if random.randrange(0, 100) < self.population_percent :
+                if random.randrange(0, 100) < self.population_percent:
                     board[i][j] = CLEAN
 
         people = np.argwhere(board != EMPTY)
@@ -112,7 +108,6 @@ class Pandemic :
         for y, x in random.sample(list(people), num_to_infect):
             board[y, x] = 2
         return board
-
 
     def move_people(self, board):
         """Each person tries one random step, wrapping at the edges.
@@ -124,21 +119,21 @@ class Pandemic :
             for j in range(self.num_cols):
                 if board[i][j] != EMPTY:
 
-                    #Cured Movement
-                    if board[i][j] == CLEAN :
+                    # Cured Movement
+                    if board[i][j] == CLEAN:
 
-                        direction,_ = self.get_neighbors(board, i, j, radius = 5, target = QUARANTINE)
+                        direction, _ = self.get_neighbors(board, i, j, radius=3, target=QUARANTINE)
 
                         step_y = -direction[0]
                         step_x = -direction[1]
 
-                        #Take Random Step
-                        if direction == [0,0] :
+                        # Take Random Step
+                        if direction == [0, 0]:
                             dir1 = random.choice([0, 1])
                             dir2 = 1 - dir1
                             step_y = dir1 * random.choice([1, -1])
                             step_x = dir2 * random.choice([1, -1])
-                        
+
                         y_next = int((i + step_y) % self.num_rows)
                         x_next = int((j + step_x) % self.num_cols)
 
@@ -147,20 +142,20 @@ class Pandemic :
                             new_board[y_next, x_next] = board[i, j]
                             new_board[i, j] = EMPTY
 
-                    #Infected Movement
+                    # Infected Movement
                     elif CLEAN < board[i][j] < QUARANTINE:
 
-                        direction,_ = self.get_neighbors(board, i, j, radius = 5, target = QUARANTINE)
+                        direction, _ = self.get_neighbors(board, i, j, radius=3, target=QUARANTINE)
                         step_y = -direction[0]
                         step_x = -direction[1]
 
-                        #Take Random Step
-                        if direction == [0,0] :
+                        # Take Random Step
+                        if direction == [0, 0]:
                             dir1 = random.choice([0, 1])
                             dir2 = 1 - dir1
                             step_y = dir1 * random.choice([1, -1])
                             step_x = dir2 * random.choice([1, -1])
-                        
+
                         y_next = int((i + step_y) % self.num_rows)
                         x_next = int((j + step_x) % self.num_cols)
 
@@ -169,21 +164,21 @@ class Pandemic :
                             new_board[y_next, x_next] = board[i, j]
                             new_board[i, j] = EMPTY
 
-                    #Quarantined Movement
-                    elif QUARANTINE <= board[i][j] < ZOMBIE :
+                    # Quarantined Movement
+                    elif QUARANTINE <= board[i][j] < ZOMBIE:
 
-                        direction,_ = self.get_neighbors(board, i, j, radius = 5, target = 1)
+                        direction, _ = self.get_neighbors(board, i, j, radius=3, target=1)
 
                         step_y = -direction[0]
                         step_x = -direction[1]
 
-                        #Take Random Step
-                        if direction == [0,0] :
+                        # Take Random Step
+                        if direction == [0, 0]:
                             dir1 = random.choice([0, 1])
                             dir2 = 1 - dir1
                             step_y = dir1 * random.choice([1, -1])
                             step_x = dir2 * random.choice([1, -1])
-                        
+
                         y_next = int((i + step_y) % self.num_rows)
                         x_next = int((j + step_x) % self.num_cols)
 
@@ -192,8 +187,8 @@ class Pandemic :
                             new_board[y_next, x_next] = board[i, j]
                             new_board[i, j] = EMPTY
 
-                    #Zombie Movement
-                    elif board[i][j] == ZOMBIE :
+                    # Zombie Movement
+                    elif board[i][j] == ZOMBIE:
                         dir1 = random.choice([0, 1])
                         dir2 = 1 - dir1
                         step_y = dir1 * random.choice([1, -1])
@@ -205,11 +200,10 @@ class Pandemic :
                         if board[y_next, x_next] == EMPTY and new_board[y_next, x_next] == EMPTY:
                             new_board[y_next, x_next] = board[i, j]
                             new_board[i, j] = EMPTY
-        
+
         return new_board
 
-
-    def get_neighbors(self, board, i, j, radius = 1, target = ZOMBIE):
+    def get_neighbors(self, board, i, j, radius=1, target=ZOMBIE):
         """Returns a cell's neighbors."""
 
         neighbors = []
@@ -219,28 +213,27 @@ class Pandemic :
         target_x = 0
         target_y = 0
 
-        #Direction in [x,y]
-        direction = [0,0]
+        # Direction in [x,y]
+        direction = [0, 0]
 
-        for i in range(-radius, radius+1) :
-            for j in range(-radius, radius+1) :
-                if (i != 0) or (j != 0) :
+        for i in range(-radius, radius + 1):
+            for j in range(-radius, radius + 1):
+                if (i != 0) or (j != 0):
                     check_i = (i1 + i) % self.num_rows
                     check_j = (j1 + j) % self.num_cols
                     neighbors.append(board[check_i, check_j])
 
-                    if board[check_i, check_j] >= target :
+                    if board[check_i, check_j] >= target:
                         target_x += i
                         target_y += j
 
-        if (target_x != 0) and (target_y != 0) :
-            if abs(target_x) > abs(target_y) :
-                direction = [target_x/abs(target_x), 0]
-            else :
-                direction = [0, target_y/abs(target_y)]
-                        
-        return direction, neighbors
+        if (target_x != 0) and (target_y != 0):
+            if abs(target_x) > abs(target_y):
+                direction = [target_x / abs(target_x), 0]
+            else:
+                direction = [0, target_y / abs(target_y)]
 
+        return direction, neighbors
 
     def spread_infection(self, board):
         """Clean people next to zombies or infected people may become infected.
@@ -276,11 +269,10 @@ class Pandemic :
                     _, neighbors = self.get_neighbors(board, i, j)
                     infected_neighbors = sum(n >= 2 for n in neighbors)
                     increase = 1 + INCUBATION_RATE * infected_neighbors
-                    if (len(neighbors) - neighbors.count(EMPTY)) == 0 :
+                    if (len(neighbors) - neighbors.count(EMPTY)) == 0:
                         increase = -1
                     new_board[i, j] = min(ZOMBIE, state + increase)
         return new_board
-
 
     def count_states(self, board):
         """Return (clean, infected, zombie) counts."""
@@ -289,7 +281,7 @@ class Pandemic :
         num_infected = np.count_nonzero(board) - num_clean - num_zombie
         return num_clean, num_infected, num_zombie
 
-    def start(self) :
+    def start(self):
         print("game started")
         board = self.create_first_board()
         self.board.update_board(board)
@@ -297,9 +289,9 @@ class Pandemic :
         self.gui.update_display(board, TICK_RATE)
         plt.pause(0.5)
 
-        #start game loop
+        # start game loop
         start_time = time.time()
-        buffer_max = 20 # buffer to allow a set number of frames after board is fully clean or zombified
+        buffer_max = 20  # buffer to allow a set number of frames after board is fully clean or zombified
         buffer = 0
         while self.gui.open:
             board = self.move_people(board)
@@ -308,23 +300,23 @@ class Pandemic :
             self.board.update_board(board)
             self.gui.update_display(board, TICK_RATE)
 
-            #Count Cell Types
+            # Count Cell Types
             clean, infected, zombie = self.count_states(board)
             total = clean + infected + zombie
             print(f"Clean: {clean},  Infected: {infected}, Zombie: {zombie}, Total: {total}")
 
-            if zombie == total or clean == total :
+            if zombie == total or clean == total:
 
-                if buffer < buffer_max :
+                if buffer < buffer_max:
                     buffer += 1
-                else :
+                else:
                     board = self.create_first_board()
                     buffer = 0
 
-            #reset time
-            if (TICK_RATE - (time.time() - start_time)) > 0 :
+            # reset time
+            if (TICK_RATE - (time.time() - start_time)) > 0:
                 plt.pause(TICK_RATE - (time.time() - start_time))
-            else :
+            else:
                 plt.pause(0.01)
             start_time = time.time()
 
@@ -332,6 +324,6 @@ class Pandemic :
         plt.show()
 
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     game = Pandemic()
     game.start()
