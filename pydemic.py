@@ -56,7 +56,7 @@ class Gui:
         ("quarantine_threshold", "Quarantine threshold", 0.0, 1.0, 0.01, "%.2f"),
         ("population_percent", "Population", 1, 100, 1, "%d"),
         ("board_size", "Size", 8, 64, 1, "%d"),
-        ("search_radius", "searc radius", 1, 7, 1, "%d"),
+        ("search_radius", "Search radius", 1, 7, 1, "%d"),
         ("initial_patients", "Initial infected", 1, 100, 1, "%d"),
     ]
 
